@@ -12,19 +12,23 @@ const {
   badRequest,
 } = require('../utils/apiError');
 
-const refreshExpiresAt = () => new Date(Date.now() + env.REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
+const refreshExpiresAt = (days = env.REFRESH_TOKEN_TTL_DAYS) =>
+  new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
-async function issueSession(user, req = {}) {
+// `rememberDays` extends the session (the "keep me signed in" checkbox).
+// Refresh rotation keeps the expiry already stored on the token document.
+async function issueSession(user, req = {}, { rememberDays } = {}) {
   const raw = randomToken();
+  const days = rememberDays || env.REFRESH_TOKEN_TTL_DAYS;
   await Token.create({
     userId: user._id,
     type: 'refresh',
     tokenHash: hashToken(raw),
-    expiresAt: refreshExpiresAt(),
+    expiresAt: refreshExpiresAt(days),
     ip: req.ip || '',
     userAgent: String(req.headers?.['user-agent'] || '').slice(0, 250),
   });
-  return { accessToken: signAccessToken(user._id, user.role), refreshToken: raw };
+  return { accessToken: signAccessToken(user._id, user.role), refreshToken: raw, refreshDays: days };
 }
 
 // Rotates a refresh token. Reuse of a rotated token revokes every session for that user (theft guard).

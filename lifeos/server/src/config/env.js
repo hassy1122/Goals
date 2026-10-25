@@ -29,6 +29,14 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1000).default(60000),
   RATE_LIMIT_API_MAX: z.coerce.number().int().min(1).default(120),
   RATE_LIMIT_AUTH_MAX: z.coerce.number().int().min(1).default(5),
+  // Private single-account mode (set in .env):
+  //   OWNER_EMAIL       — the one account that may sign in; other credentials are rejected
+  //   OWNER_NAME        — display name used when the seed provisions the account
+  //   OWNER_PASSWORD    — password used by the seed when it creates the account
+  // When OWNER_EMAIL is empty (tests / dev defaults) no restriction is applied.
+  OWNER_EMAIL: z.string().default(''),
+  OWNER_NAME: z.string().default(''),
+  OWNER_PASSWORD: z.string().default(''),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -29,14 +29,14 @@ docker compose up --build
 - Frontend: http://localhost:5173 (requests proxy to the API)
 - API: http://localhost:4000/api/v1/health
 - Swagger UI: http://localhost:4000/api/docs
-- Seed demo data (from the repo root): `docker compose exec api npm run seed` → **demo@lifeos.app / ChangeMe!2026**
+- Seed: set `OWNER_EMAIL` / `OWNER_NAME` / `OWNER_PASSWORD` in `server/.env`, then `docker compose exec api npm run seed` — provisions the single owner account (sign-up is disabled)
 
 ## Quick start — double-click (recommended on Windows)
 
 Open the **`Start LifeOS`** shortcut in the project folder (`Goals\Start LifeOS.lnk`, or double-click `lifeos\Start LifeOS.bat`). It:
 
 1. starts **MongoDB** with data stored permanently in `server\.data\db` (your changes survive restarts and closing the browser — they are saved to disk);
-2. seeds the demo account on first run (**demo@lifeos.app / ChangeMe!2026**);
+2. provisions your single owner account on first run (email/password from `server\.env` — sign-up is disabled, so this is the only login that ever works);
 3. starts the API (`:4000`, Swagger at `/api/docs`) and the web app;
 4. opens your browser at the app automatically.
 
@@ -79,6 +79,7 @@ npm run dev                     # http://localhost:5173
 | `SMTP_*` | email sending; empty → emails print to the console (dev) |
 | `INITIAL_ADMIN_EMAIL` / `INITIAL_ADMIN_PASSWORD` | optional admin bootstrapped by seed |
 | `RATE_LIMIT_*` | request throttling |
+| `OWNER_EMAIL` / `OWNER_NAME` / `OWNER_PASSWORD` | single-account mode: the one login that works; sign-up is disabled and the seed provisions this account (keep this out of git — real values go in `.env`) |
 
 Client env: `VITE_API_URL` (empty in dev — the Vite dev proxy handles `/api`).
 

@@ -106,7 +106,7 @@ function seedIfNeeded(wasFreshData) {
     log('seed', 'existing data found — skipping demo seed');
     return;
   }
-  log('seed', 'first run — creating demo account & Phase 2 sample data…');
+  log('seed', 'first run — provisioning the owner account…');
   const result = spawnSync(process.execPath, ['src/seed/seed.js'], {
     cwd: SERVER_DIR,
     stdio: 'inherit',

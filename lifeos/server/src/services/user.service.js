@@ -11,6 +11,7 @@ const Milestone = require('../models/Milestone');
 const Upload = require('../models/Upload');
 const Decision = require('../models/Decision');
 const tokenService = require('./token.service');
+const env = require('../config/env');
 const storage = require('../utils/storage');
 const { hashPassword } = require('../utils/crypto');
 const {
@@ -39,6 +40,10 @@ async function createDefaultAreas(userId) {
 }
 
 async function registerUser({ name, email, password }) {
+  // Private installation: the owner account is provisioned by the seed, never by sign-up.
+  if (env.OWNER_EMAIL) {
+    throw forbidden('Sign-up is disabled. This LifeOS has a single provisioned account.', 'SIGNUP_DISABLED');
+  }
   const existing = await User.findOne({ email });
   if (existing) throw conflict('That email is already registered.', 'EMAIL_TAKEN');
 
@@ -50,8 +55,30 @@ async function registerUser({ name, email, password }) {
   return { user, verifyToken };
 }
 
+// Seed/bootstrap provisioning. Not a sign-up path: bypasses the single-account
+// lock, marks the email verified (local SMTP is usually absent), and is
+// idempotent — an existing account is returned untouched and never re-hashed.
+async function provisionUser({ name, email, password, role = 'user' }) {
+  const existing = await User.findOne({ email });
+  if (existing) {
+    if (role === 'admin' && existing.role !== 'admin') {
+      existing.role = 'admin';
+      await existing.save();
+    }
+    return existing;
+  }
+  const passwordHash = await hashPassword(password);
+  const user = await User.create({ name, email, passwordHash, role, emailVerified: true });
+  await createDefaultAreas(user._id);
+  return user;
+}
+
 async function authenticate({ email, password }) {
   const user = await User.findOne({ email }).select('+passwordHash');
+  if (env.OWNER_EMAIL && (!user || String(user.email) !== env.OWNER_EMAIL)) {
+    // Enforced before credential comparison: credentials of any other account simply don't count.
+    throw forbidden('This LifeOS only accepts the configured owner account.', 'ONLY_OWNER');
+  }
   if (!user || user.deletedAt || !(await user.comparePassword(password))) {
     throw unauthorized('Incorrect email or password.', 'INVALID_CREDENTIALS');
   }
@@ -169,6 +196,7 @@ async function deleteAccount(userId, password) {
 module.exports = {
   DEFAULT_AREAS,
   registerUser,
+  provisionUser,
   createDefaultAreas,
   authenticate,
   getMe,

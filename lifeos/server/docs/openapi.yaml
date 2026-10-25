@@ -35,7 +35,7 @@ paths:
   /api/v1/auth/register:
     post:
       tags: [auth]
-      summary: Create account (sets auth cookies, emails verification link)
+      summary: Create account (disabled in single-owner mode — the seed provisions the owner instead)
       requestBody:
         required: true
         content:
@@ -49,14 +49,29 @@ paths:
                 password: { type: string, minLength: 10 }
       responses:
         '201': { description: Account created — cookies set }
+        '403': { description: SIGNUP_DISABLED — OWNER_EMAIL is configured }
         '409': { description: Email already registered }
   /api/v1/auth/login:
     post:
       tags: [auth]
       summary: Sign in (sets auth cookies)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+                rememberMe:
+                  type: boolean
+                  description: "'Keep me signed in' — extends the session to 30 days instead of the default 7"
       responses:
         '200': { description: OK }
         '401': { description: Invalid credentials }
+        '403': { description: ONLY_OWNER — the email is not the configured owner account }
   /api/v1/auth/refresh:
     post:
       tags: [auth]

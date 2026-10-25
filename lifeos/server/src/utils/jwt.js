@@ -39,11 +39,12 @@ function cookieBase() {
   };
 }
 
-function setAuthCookies(res, { accessToken, refreshToken }) {
+function setAuthCookies(res, { accessToken, refreshToken, refreshDays }) {
   res.cookie(COOKIE.ACCESS, accessToken, { ...cookieBase(), maxAge: parseTtlMs(env.JWT_ACCESS_TTL) });
+  const days = refreshDays || env.REFRESH_TOKEN_TTL_DAYS;
   res.cookie(COOKIE.REFRESH, refreshToken, {
     ...cookieBase(),
-    maxAge: env.REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
+    maxAge: days * 24 * 60 * 60 * 1000,
   });
 }
 

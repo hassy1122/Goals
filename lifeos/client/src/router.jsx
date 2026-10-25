@@ -8,7 +8,6 @@ import AppLayout from './layouts/AppLayout.jsx';
 import AuthLayout from './layouts/AuthLayout.jsx';
 
 const LoginPage = lazy(() => import('./features/auth/LoginPage.jsx'));
-const RegisterPage = lazy(() => import('./features/auth/RegisterPage.jsx'));
 const ForgotPasswordPage = lazy(() => import('./features/auth/ForgotPasswordPage.jsx'));
 const ResetPasswordPage = lazy(() => import('./features/auth/ResetPasswordPage.jsx'));
 const VerifyEmailPage = lazy(() => import('./features/auth/VerifyEmailPage.jsx'));
@@ -103,7 +102,6 @@ export const router = createBrowserRouter([
     ),
     children: [
       { path: 'login', element: <LoginPage /> },
-      { path: 'register', element: <RegisterPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'reset-password', element: <ResetPasswordPage /> },
       { path: 'verify-email', element: <VerifyEmailPage /> },

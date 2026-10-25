@@ -24,9 +24,10 @@ exports.register = async (req, res, next) => {
 
 exports.login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, rememberMe } = req.body;
     const user = await userService.authenticate({ email, password });
-    const session = await tokenService.issueSession(user, req);
+    // "Keep me signed in" → 30 days instead of the default 7.
+    const session = await tokenService.issueSession(user, req, rememberMe ? { rememberDays: 30 } : {});
     setAuthCookies(res, session);
     ok(res, { user: user.toSafeJSON() });
   } catch (err) {

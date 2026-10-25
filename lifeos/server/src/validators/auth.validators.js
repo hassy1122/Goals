@@ -17,6 +17,7 @@ const loginSchema = z
   .object({
     email: emailField,
     password: z.string().min(1, 'Enter your password').max(128),
+    rememberMe: z.boolean().optional(),
   })
   .strict();
 
