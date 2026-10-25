@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+coverage/
+.env
+*.local
+npm-debug.log*
+.DS_Store
+
+# Persistent local database (created by the Start LifeOS launcher)
+server/.data/

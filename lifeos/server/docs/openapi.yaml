@@ -1,0 +1,472 @@
+openapi: 3.0.3
+info:
+  title: LifeOS API
+  version: 1.0.0
+  description: |
+    LifeOS REST API v1. Phase 1: health, quotes, auth (JWT in httpOnly cookies,
+    rotating refresh tokens), notifications, admin user management. Phase 2: life
+    areas, wheel, vision, decisions, goals, milestones, templates, uploads, onboarding.
+    Later phases append their paths to this file.
+servers:
+  - url: http://localhost:4000
+    description: Local development
+tags:
+  - name: meta
+  - name: auth
+  - name: notifications
+  - name: admin
+  - name: life
+  - name: goals
+  - name: uploads
+
+paths:
+  /api/v1/health:
+    get:
+      tags: [meta]
+      summary: Service health snapshot
+      responses:
+        '200': { description: OK }
+  /api/v1/quotes/daily:
+    get:
+      tags: [meta]
+      summary: Deterministic quote of the day
+      responses:
+        '200': { description: OK }
+  /api/v1/auth/register:
+    post:
+      tags: [auth]
+      summary: Create account (sets auth cookies, emails verification link)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string, example: Demo Planner }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 10 }
+      responses:
+        '201': { description: Account created — cookies set }
+        '409': { description: Email already registered }
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      summary: Sign in (sets auth cookies)
+      responses:
+        '200': { description: OK }
+        '401': { description: Invalid credentials }
+  /api/v1/auth/refresh:
+    post:
+      tags: [auth]
+      summary: Rotate refresh token, issue new access token
+      responses:
+        '200': { description: OK — new cookies set }
+        '401': { description: Missing/expired/replayed refresh token }
+  /api/v1/auth/verify-email:
+    post:
+      tags: [auth]
+      summary: Burn a verify-email token
+      responses:
+        '200': { description: Verified }
+        '400': { description: Invalid/expired/used token }
+        '404': { description: Unknown token }
+  /api/v1/auth/resend-verification:
+    post:
+      tags: [auth]
+      summary: Re-issue and email a verification link (auth required)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: Sent }
+  /api/v1/auth/forgot-password:
+    post:
+      tags: [auth]
+      summary: Start password reset (always returns success, never leaks existence)
+      responses:
+        '200': { description: Sent }
+  /api/v1/auth/reset-password:
+    post:
+      tags: [auth]
+      summary: Consume reset token and set a new password
+      responses:
+        '200': { description: Password reset, sessions revoked }
+        '400': { description: Invalid/expired token }
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      summary: Revoke the refresh cookie and clear cookies
+      responses:
+        '200': { description: Signed out }
+  /api/v1/auth/logout-all:
+    post:
+      tags: [auth]
+      summary: Revoke every refresh session for the user
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: Signed out everywhere }
+  /api/v1/auth/me:
+    get:
+      tags: [auth]
+      summary: Current user profile
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: OK }
+        '401': { description: No/expired session }
+    patch:
+      tags: [auth]
+      summary: Update profile (name, avatarUrl, timezone, locale, theme)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: OK }
+    delete:
+      tags: [auth]
+      summary: Delete account permanently (password confirmation required)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+        '401': { description: Wrong password }
+  /api/v1/auth/me/password:
+    patch:
+      tags: [auth]
+      summary: Change password (revokes all sessions, re-issues cookies)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: Changed }
+        '401': { description: Current password incorrect }
+  /api/v1/auth/me/preferences:
+    patch:
+      tags: [auth]
+      summary: Merge prefs / notifPrefs / privacy (incl. dashboard layout state)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: OK }
+  /api/v1/notifications:
+    get:
+      tags: [notifications]
+      summary: List notifications (?unread=true&page=&limit=)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: OK }
+  /api/v1/notifications/read-all:
+    post:
+      tags: [notifications]
+      summary: Mark every notification read
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: OK }
+  /api/v1/notifications/{id}/read:
+    patch:
+      tags: [notifications]
+      summary: Mark one notification read
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: OK }
+        '404': { description: Not found }
+  /api/v1/admin/users:
+    get:
+      tags: [admin]
+      summary: List/search users (admin only; ?q=&page=&limit=)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: OK }
+        '403': { description: Requires admin role }
+  /api/v1/admin/users/{id}:
+    patch:
+      tags: [admin]
+      summary: Change role / disable user (admin only; cannot demote the last admin)
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: OK }
+        '400': { description: Last-admin guard }
+
+  # ================= Phase 2 =================
+  /api/v1/life-areas:
+    get:
+      tags: [life]
+      summary: List areas (blendedScore = 0.6·assessment + 0.4·goal-derived)
+      security: [{ cookieAuth: [] }]
+      parameters: [ { in: query, name: includeArchived, schema: { type: string, enum: ['true', 'false'] } } ]
+      responses: { '200': { description: OK } }
+    post:
+      tags: [life]
+      summary: Create an area (key auto-slugged, order auto-assigned)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '201': { description: Created }
+        '409': { description: DUPLICATE_AREA }
+  /api/v1/life-areas/reorder:
+    post:
+      tags: [life]
+      summary: Reorder areas by id list
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/life-areas/wheel:
+    get:
+      tags: [life]
+      summary: Areas enriched with latest assessment + blended scores (balance wheel)
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/life-areas/{id}:
+    patch:
+      tags: [life]
+      summary: Update area
+      security: [{ cookieAuth: [] }]
+      parameters: [ { in: path, name: id, required: true, schema: { type: string } } ]
+      responses: { '200': { description: OK } }
+    delete:
+      tags: [life]
+      summary: Delete area (blocked while goals reference it)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: OK }
+        '409': { description: AREA_IN_USE }
+  /api/v1/life-areas/{id}/assessments:
+    post:
+      tags: [life]
+      summary: Record a self-assessment; sets area.currentScore
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/vision:
+    get:
+      tags: [life]
+      summary: Vision doc (auto-created); statement, values, roadmap, ikigai
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+    patch:
+      tags: [life]
+      summary: Patch any vision section (arrays replace)
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/vision/board:
+    post:
+      tags: [life]
+      summary: Add an image upload to the vision board
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: OK }
+        '409': { description: Image already on the board }
+    patch:
+      tags: [life]
+      summary: Reorder board images (by embedded subdoc id list)
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/vision/board/{imageId}:
+    delete:
+      tags: [life]
+      summary: Remove a board image
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/decisions:
+    get:
+      tags: [life]
+      summary: List decisions (status filter)
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+    post:
+      tags: [life]
+      summary: Create a decision with pros/cons options
+      security: [{ cookieAuth: [] }]
+      responses: { '201': { description: Created } }
+  /api/v1/decisions/{id}:
+    patch:
+      tags: [life]
+      summary: Update / decide (final choice index, decidedAt auto-set)
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+    delete:
+      tags: [life]
+      summary: Delete a decision
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/goals:
+    get:
+      tags: [goals]
+      summary: List goals (view/area/type/q/sort, blocked-dependency enrichment)
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+    post:
+      tags: [goals]
+      summary: Create goal (priority auto-scored, weight cap Σ ≤ 100/area)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '201': { description: 'Created — returns goal + celebration' }
+        '409': { description: WEIGHT_OVERFLOW }
+  /api/v1/goals/analytics/comparison:
+    get:
+      tags: [goals]
+      summary: Bar-chart series — progress + priority per goal
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/goals/analytics/impact-effort:
+    get:
+      tags: [goals]
+      summary: Impact/effort scatter points
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/goals/analytics/gantt:
+    get:
+      tags: [goals]
+      summary: Timelines with embedded milestone markers
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/goals/{goalId}:
+    get:
+      tags: [goals]
+      summary: One goal + its milestones
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+    patch:
+      tags: [goals]
+      summary: Update goal (status change manages completedAt; progress recomputes)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: 'OK — returns goal, celebration, statusChanged' }
+        '409': { description: WEIGHT_OVERFLOW }
+    delete:
+      tags: [goals]
+      summary: Delete goal (milestones cascade, dependency refs pulled)
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/goals/{goalId}/milestones:
+    post:
+      tags: [goals]
+      summary: Add milestone (order auto)
+      security: [{ cookieAuth: [] }]
+      responses: { '201': { description: Created } }
+  /api/v1/goals/{goalId}/milestones/reorder:
+    post:
+      tags: [goals]
+      summary: Reorder milestones
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/goals/{goalId}/milestones/{id}:
+    patch:
+      tags: [goals]
+      summary: Update milestone (status done→100%)
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+    delete:
+      tags: [goals]
+      summary: Delete milestone
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/goals/{goalId}/milestones/{id}/redeem:
+    post:
+      tags: [goals]
+      summary: Mark a milestone reward redeemed
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: OK }
+        '400': { description: NO_REWARD }
+  /api/v1/goals/{goalId}/risks:
+    post:
+      tags: [goals]
+      summary: Add a risk (probability 1-5, impact 1-5, backup plan)
+      security: [{ cookieAuth: [] }]
+      responses: { '201': { description: Created } }
+  /api/v1/goals/{goalId}/risks/{index}:
+    patch:
+      tags: [goals]
+      summary: Update a risk by array index
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+    delete:
+      tags: [goals]
+      summary: Remove a risk by array index
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/goals/{goalId}/dependencies:
+    post:
+      tags: [goals]
+      summary: Add dependency (cycle-guarded)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: OK }
+        '400': { description: DEPENDENCY_CYCLE }
+  /api/v1/goals/{goalId}/dependencies/candidates:
+    get:
+      tags: [goals]
+      summary: Pick-list of possible dependency goals
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/goals/{goalId}/dependencies/{depId}:
+    delete:
+      tags: [goals]
+      summary: Remove a dependency
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/goals/{goalId}/burnup:
+    get:
+      tags: [goals]
+      summary: Planned vs actual progress series + on-track / at-risk / behind status
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/goals/{goalId}/make-template:
+    post:
+      tags: [goals]
+      summary: Save this goal as a reusable custom template
+      security: [{ cookieAuth: [] }]
+      responses: { '201': { description: Created } }
+  /api/v1/goal-templates:
+    get:
+      tags: [goals]
+      summary: Template library — { system, custom }
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/goal-templates/{key}/apply:
+    post:
+      tags: [goals]
+      summary: Apply a template into a new planned goal (milestones cloned & dated)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '201': { description: 'Created — returns goal + milestones' }
+        '404': { description: TEMPLATE_NOT_FOUND }
+  /api/v1/uploads:
+    post:
+      tags: [uploads]
+      summary: Multipart upload (field "file"; ≤ 5 MB; jpeg/png/webp/pdf)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '201': { description: Created }
+        '413': { description: FILE_TOO_LARGE }
+        '415': { description: UNSUPPORTED_TYPE }
+  /api/v1/uploads/{id}:
+    get:
+      tags: [uploads]
+      summary: Stream an owned file (owner-guarded, never static)
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: File bytes } }
+    delete:
+      tags: [uploads]
+      summary: Delete file + doc (also pulled from vision board)
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /api/v1/auth/me/onboarding/complete:
+    post:
+      tags: [auth]
+      summary: Finish onboarding — area targets, vision statement, first goal
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: lifeos_at
+  schemas:
+    ApiError:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: object, nullable: true }

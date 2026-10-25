@@ -1,0 +1,45 @@
+services:
+  mongo:
+    image: mongo:7
+    command: ['--quiet', '--bind_ip_all']
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping').ok === 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./server
+    command: sh -c "npm run dev"
+    env_file:
+      - ./server/.env
+    environment:
+      NODE_ENV: development
+      MONGODB_URI: mongodb://mongo:27017/lifeos
+    ports:
+      - '4000:4000'
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  web:
+    build: ./client
+    command: npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
+    environment:
+      VITE_API_URL: '' # requests go through the Vite dev proxy
+      API_PROXY_TARGET: http://api:4000
+    ports:
+      - '5173:5173'
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    depends_on:
+      - api
+
+volumes:
+  mongo-data:
