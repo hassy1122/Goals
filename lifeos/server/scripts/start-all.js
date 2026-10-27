@@ -21,7 +21,7 @@ const PID_FILE = path.join(DATA_DIR, 'mongo.pid');
 
 const MONGO_PORT = Number(process.env.MONGO_PORT || 27017);
 const API_PORT = Number(process.env.PORT || 4000);
-const WEB_URL_DEFAULT = 'http://localhost:5173';
+const WEB_URL_DEFAULT = 'http://localhost:5221';
 
 const children = new Set();
 let shuttingDown = false;

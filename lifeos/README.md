@@ -26,7 +26,7 @@ cd ..
 docker compose up --build
 ```
 
-- Frontend: http://localhost:5173 (requests proxy to the API)
+- Frontend: http://localhost:5221 (requests proxy to the API; port 5173 belongs to LifePulse)
 - API: http://localhost:4000/api/v1/health
 - Swagger UI: http://localhost:4000/api/docs
 - Seed: set `OWNER_EMAIL` / `OWNER_NAME` / `OWNER_PASSWORD` in `server/.env`, then `docker compose exec api npm run seed` — provisions the single owner account (sign-up is disabled)
@@ -61,7 +61,7 @@ npm run dev                     # http://localhost:4000
 # Frontend (second terminal)
 cd ../client
 npm install
-npm run dev                     # http://localhost:5173
+npm run dev                     # http://localhost:5221
 ```
 
 ## Environment variables (server)

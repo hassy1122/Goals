@@ -8,7 +8,11 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
-      port: 5173,
+      // Own dedicated port: LifePulse (the PWA project in "To Do List") owns
+      // 5173 and its launcher evicts anything squatting on it, so LifeOS
+      // must not fight LifePulse for this port anymore.
+      port: 5221,
+      strictPort: true,
       proxy: {
         '/api': {
           target: env.API_PROXY_TARGET || 'http://localhost:4000',
